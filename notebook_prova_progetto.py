@@ -707,6 +707,8 @@ def plot_cancellations_per_airport(flights_df: DataFrame, airports_df: DataFrame
     # Mostra il grafico
     fig.show()
 
+def delays_during_the_day():
+    pass
 
 # In[24]:
 
