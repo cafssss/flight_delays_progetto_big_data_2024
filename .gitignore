@@ -1,0 +1,130 @@
+# Sistema operativo
+####################
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# Directory di build
+####################
+/build/
+/bin/
+/obj/
+/out/
+
+# Editor di testo
+####################
+# Vim
+*.swp
+*.swo
+*.swn
+
+# Emacs
+*~
+\#*\#
+
+# Sublime Text
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/
+.history
+
+# IDE specifici
+####################
+# JetBrains
+.idea/
+*.iml
+
+# Eclipse
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.metadata/
+.apt_generated/
+.autosave/
+.externalToolBuilders/
+.recommenders/
+target/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+
+# Linguaggi di programmazione
+#############################
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+venv.bak/
+env.bak/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Ruby
+*.gem
+log/
+tmp/
+
+# PHP
+vendor/
+
+# Logs e databases
+###################
+*.log
+*.sql
+*.sqlite
+
+# Docker
+###################
+*.dockerfile
+*.tar
+
+# File di configurazione personale
+##############################
+*.env
+
+# Datasets
+Dataset/

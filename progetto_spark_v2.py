@@ -1,10 +1,15 @@
 from pyspark.sql import SparkSession, Row
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import col, mean, count, when, lpad, concat, lit, to_timestamp, month, year, sum as _sum, concat_ws, udf
+from pyspark.sql.functions import col, mean, count, when, lpad, concat, lit, \
+                                    to_timestamp, month, year, sum as _sum, concat_ws, udf, \
+                                    monotonically_increasing_id
+
 from pyspark.ml.feature import Imputer
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
+from decouple import config
+from graphframes import GraphFrame
 
 
 def calcola_percentuale_valori_nulli(flights_df: DataFrame):
@@ -209,10 +214,12 @@ def most_delay(flights_df: DataFrame, airports_df: DataFrame):
     index = pandas_df.index
 
     # Barre per delay_start
-    bar1 = ax.bar(index, pandas_df['total_delay_start'], bar_width, label='Delay Start')
+    bar1 = ax.bar(index, pandas_df['total_delay_start'],
+                  bar_width, label='Delay Start')
 
     # Barre per delay_arrive
-    bar2 = ax.bar(index + bar_width, pandas_df['total_delay_arrive'], bar_width, label='Delay Arrive')
+    bar2 = ax.bar(index + bar_width,
+                  pandas_df['total_delay_arrive'], bar_width, label='Delay Arrive')
 
     # Aggiunta delle etichette e del titolo
     ax.set_xlabel('Origin Airports')
@@ -225,6 +232,8 @@ def most_delay(flights_df: DataFrame, airports_df: DataFrame):
     # Mostrare il grafico
     plt.tight_layout()
     plt.show()'''
+
+# n.8012839983
 
 
 def heatmap_delay(flights_df: DataFrame, airports_df: DataFrame, airlines_df: DataFrame):
@@ -529,16 +538,16 @@ def origin_airport_pie(flights: DataFrame, airports: DataFrame, spark):
     flights_percentage_first = flights_percentage.orderBy(
         "PERCENTAGE", ascending=False).limit(15)
 
-    #df_without_first = flights_percentage.exceptAll(flights_percentage_first)
+    # df_without_first = flights_percentage.exceptAll(flights_percentage_first)
 
-    #percentage_other_airport = df_without_first.agg(_sum("PERCENTAGE").alias("PERCENTAGE_LAST")).collect()[0]["PERCENTAGE_LAST"]
-    
-    #total_flights_last = df_without_first.agg(_sum("NUM_FLIGHTS").alias("TOTAL_FLIGHTS")).collect()[0]["TOTAL_FLIGHTS"]
-    
-    #n_other_airport = df_without_first.count()
+    # percentage_other_airport = df_without_first.agg(_sum("PERCENTAGE").alias("PERCENTAGE_LAST")).collect()[0]["PERCENTAGE_LAST"]
 
-    #newRow = Row(NUM_FLIGHTS=total_flights_last, ORIGIN_AIRPORT_NAME="Other airport", PERCENTAGE=percentage_other_airport)
-    #flights_percentage_first = flights_percentage_first.union([newRow])
+    # total_flights_last = df_without_first.agg(_sum("NUM_FLIGHTS").alias("TOTAL_FLIGHTS")).collect()[0]["TOTAL_FLIGHTS"]
+
+    # n_other_airport = df_without_first.count()
+
+    # newRow = Row(NUM_FLIGHTS=total_flights_last, ORIGIN_AIRPORT_NAME="Other airport", PERCENTAGE=percentage_other_airport)
+    # flights_percentage_first = flights_percentage_first.union([newRow])
     # Convertire il DataFrame PySpark in un Pandas DataFrame
     flights_pandas = flights_percentage_first.toPandas()
 
@@ -549,6 +558,72 @@ def origin_airport_pie(flights: DataFrame, airports: DataFrame, spark):
     # Mostrare il grafico
     fig.show()
 
+
+def graph_cities_interconnected(flights_df: DataFrame, airports_df: DataFrame):
+    # Creare il DataFrame dei vertici
+    vertices = airports_df.withColumnRenamed("IATA_CODE", "id")
+
+    # Creare il DataFrame degli archi
+    edges = flights_df.withColumnRenamed(
+        "ORIGIN_AIRPORT", "src").withColumnRenamed("DESTINATION_AIRPORT", "dst")
+
+    # Creare il grafo
+    graph = GraphFrame(vertices, edges)
+
+    # Calcolare il numero di connessioni in entrata per ciascuna città
+    in_degrees = graph.inDegrees
+
+
+    # Ordinare per numero di connessioni in entrata e mostrare le città più connesse
+    in_degrees= in_degrees.select("id", "inDegree").orderBy("inDegree", ascending=False).limit(15)
+
+    # Eseguire l'algoritmo PageRank
+    pagerank_results = graph.pageRank(resetProbability=0.15, maxIter=10)
+    pagerank_results = pagerank_results.vertices.select("id", "pagerank").orderBy("pagerank", ascending=False).limit(15)
+
+    triangle_count = graph.triangleCount().select("id", "count").orderBy("count", ascending=False).limit(15)
+
+    # Mostrare i risultati
+    in_degrees.show()
+    pagerank_results.show()
+    triangle_count.show()
+    
+    # Convertire i risultati in Pandas DataFrame
+    pagerank_df = pagerank_results.toPandas()
+    triangle_count_df = triangle_count.toPandas()
+    in_degrees = in_degrees.toPandas()
+  
+    # Configurazione dello stile di Seaborn
+    sns.set(style="whitegrid")
+
+    # Visualizzare il PageRank
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x="id", y="pagerank", data=pagerank_df)
+    plt.title("PageRank degli Aeroporti")
+    plt.ylabel("PageRank")
+    plt.xlabel("Aeroporto")
+    plt.xticks(rotation=45)
+    plt.show()
+
+    # Visualizzare il conteggio dei triangoli
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x="id", y="count", data=triangle_count_df)
+    plt.title("Conteggio dei Triangoli per Aeroporto")
+    plt.ylabel("Numero di Triangoli")
+    plt.xlabel("Aeroporto")
+    plt.xticks(rotation=45)
+    plt.show()
+
+    # Visualizzare il grado di connessione
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x="id", y="inDegree", data=in_degrees)
+    plt.title("Grado di Connessione degli Aeroporti")
+    plt.ylabel("Grado")
+    plt.xlabel("Aeroporto")
+    plt.xticks(rotation=45)
+    plt.show()
+
+
 #################################################################################
 
 
@@ -556,6 +631,10 @@ def main():
     # Creazione della sessione Spark
     spark = SparkSession.builder \
         .appName("Flight Delays and Cancellations Analysis") \
+        .config("spark.driver.memory", "4g")\
+        .config("spark.executor.memory", "4g") \
+        .config("spark.executor.cores", "2")\
+        .config("spark.executor.instances", "4") \
         .getOrCreate()
 
     columns_to_drop_init = ['TAXI_OUT', 'TAXI_IN', 'WHEELS_ON', 'WHEELS_OFF', 'YEAR',
@@ -563,9 +642,9 @@ def main():
                             'LATE_AIRCRAFT_DELAY', 'WEATHER_DELAY', 'DIVERTED', 'FLIGHT_NUMBER',
                             'TAIL_NUMBER', 'AIR_TIME', 'HOUR', 'MINUTE']
     # Percorso ai file CSV
-    file_path_flights = "C:\\Users\\Lucio\\Desktop\\big_data\\Dataset\\flights.csv"
-    file_path_airport = "C:\\Users\\Lucio\\Desktop\\big_data\\Dataset\\airports.csv"
-    file_path_airline = "C:\\Users\\Lucio\\Desktop\\big_data\\Dataset\\airlines.csv"
+    file_path_flights = config("PATH_FLIGHTS")
+    file_path_airport = config("PATH_AIRPORT")
+    file_path_airline = config("PATH_AIRLINE")
     # Caricamento dei dataset
     flights_df = spark.read.csv(
         file_path_flights, header=True, inferSchema=True)
@@ -595,6 +674,7 @@ def main():
     # eliminati 15187 su 5729195 equivalente al 0,27% si può optare pure un imputazione
     voli_in_ritardo = delete_rows_null(voli_in_ritardo, ["ELAPSED_TIME"])
 
+    graph_cities_interconnected(voli_in_ritardo, airports_df)
     # df=distribuzione_valori_nulli(voli_in_ritardo, "ARRIVAL_TIME")
     origin_airport_pie(voli_in_ritardo, airports_df, spark)
     # funzione che mostra in un grafico le citta con più ritardo in ingresso e uscita
