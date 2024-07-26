@@ -236,7 +236,7 @@ def most_delay(flights_df: DataFrame, airports_df: DataFrame):
 # n.8012839983
 
 
-def heatmap_delay(flights_df: DataFrame, airports_df: DataFrame, airlines_df: DataFrame):
+def graph_city_airline_delay(flights_df: DataFrame, airports_df: DataFrame, airlines_df: DataFrame):
 
     # Rinomina le colonne duplicate per evitare conflitti durante l'unione
     airports_df = airports_df.withColumnRenamed("AIRLINE", "AIRLINE_AIRPORTS")
@@ -246,15 +246,38 @@ def heatmap_delay(flights_df: DataFrame, airports_df: DataFrame, airlines_df: Da
     joined_df = flights_df.join(airports_df, flights_df.ORIGIN_AIRPORT == airports_df.IATA_CODE, "inner") \
         .join(airlines_df, flights_df.AIRLINE == airlines_df.IATA_CODE, "inner")
 
+    flights_count = joined_df.groupBy("CITY").agg(
+        count("*").alias("NUM_FLIGHTS"))
+    # Calcolare la media del numero di voli
+    average_num_flights = flights_count.select(
+        mean("NUM_FLIGHTS").alias("AVG_ROUTE"))
+
+    # Arrotondo all'intero più vicino
+    avg_flights = round(average_num_flights.collect()[0][0])
+
+    # Filtrare le città con più della media di voli per rotta (in modo da filtrare le rotte più gettonate)
+    filtered_routes = flights_count.orderBy("NUM_FLIGHTS", ascending=False).limit(10)
+
+    # Unire il DataFrame originale con le città filtrate per ottenere i dettagli di ritardo solo per le città valide
+    valid_df = joined_df.join(filtered_routes, on="CITY")
     # Calcolare la media dei ritardi di partenza per città e compagnia aerea
-    average_delays = joined_df.groupBy("CITY", "AIRLINE_NAME") \
-        .agg(mean("DEPARTURE_DELAY").alias("Average Departure Delay"))\
+    average_delays = valid_df.groupBy("CITY", "AIRLINE_NAME") \
+        .agg(mean("DEPARTURE_DELAY").alias("Average Departure Delay")).orderBy("Average Departure Delay", ascending=False)\
         # .orderBy("Average Departure Delay", ascending=False)
 
     # Convertire il risultato in un Pandas DataFrame per la visualizzazione con Seaborn
     pandas_df = average_delays.toPandas()
 
-    # Pivot della tabella per creare la matrice per la heatmap
+    plt.figure(figsize=(14, 7))
+    sns.barplot(x='Average Departure Delay', y='CITY', hue='AIRLINE_NAME', data=pandas_df)
+    plt.title('Media dei minuti di ritardo per città e compagnia Aerea')
+    plt.xlabel('Media dei minuti di ritardo')
+    plt.ylabel('Città')
+    plt.legend(title='Compagnia Aerea', fontsize='small')
+    plt.show()
+
+
+'''    # Pivot della tabella per creare la matrice per la heatmap
     heatmap_data = pandas_df.pivot(
         index="CITY", columns="AIRLINE_NAME", values="Average Departure Delay")
 
@@ -273,7 +296,7 @@ def heatmap_delay(flights_df: DataFrame, airports_df: DataFrame, airlines_df: Da
     # Aumentare la spaziatura per le etichette degli assi
     plt.tight_layout(rect=[0, 0, 1, 1])
     # Mostrare il grafico
-    plt.show()
+    plt.show()'''
 
 
 def heatmap_delay_dinamic(flights_df: DataFrame, airports_df: DataFrame, airlines_df: DataFrame):
@@ -587,7 +610,7 @@ def graph_cities_interconnected(flights_df: DataFrame, airports_df: DataFrame):
     in_degrees.show()
     pagerank_results.show()
     triangle_count.show()
-    
+
     # Convertire i risultati in Pandas DataFrame
     pagerank_df = pagerank_results.toPandas()
     triangle_count_df = triangle_count.toPandas()
@@ -680,12 +703,10 @@ def main():
     # funzione che mostra in un grafico le citta con più ritardo in ingresso e uscita
     most_delay(voli_in_ritardo, airports_df)
 
-    # funzione che disegna una heatmap fra aeroporti e compagnie,
-    # i valori rappresentano invece la media dei minuti di ritardo
-    heatmap_delay(voli_in_ritardo, airports_df, airlines_df)
-
-    # La stessa cosa della funzione sopra, questa invece è più dinamica
-    heatmap_delay_dinamic(voli_in_ritardo, airports_df, airlines_df)
+    # funzione che disegna un grafico fra città e compagnie,
+    # i valori rappresentano invece la media dei minuti di ritardo per compagnia
+    # le città visualizzate sono le città che hanno più voli
+    graph_city_airline_delay(voli_in_ritardo, airports_df, airlines_df)
 
     # funzione che mostra le principali motivazioni delle cancellazioni dei voli
     plot_cancellation_reasons(voli_cancellati)
