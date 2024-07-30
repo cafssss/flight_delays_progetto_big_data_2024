@@ -10,7 +10,8 @@ Questo progetto analizza i ritardi e le cancellazioni dei voli utilizzando PySpa
 
 ## Struttura del Codice
 
-- `src/main.py`: Script principale che esegue l'analisi.
+- `main.py`: Script principale che esegue l'analisi.
+- `presentazione_finale.pptx`: Presentazione dell'analisi
 - `src/preprocessing.py`: Contiene le funzioni per il preprocessing dei dati.
 - `src/cancelled_flights.py`: Contiene le funzioni per l'analisi dei dati per i voli cancellati.
 - `src/delayed_flights.py`: Contiene le funzioni per l'analisi dei dati per i voli in ritardo.
