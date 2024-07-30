@@ -12,6 +12,9 @@ class PreprocessingFlights:
         self.delayed_flights = None
 
     def __percentage_of_null_values(self, df: DataFrame):
+        '''Funzione che calcola la percentuale dei valori nulli su tutte
+        le colonne di un dataframe e li visualizza a schermo'''
+
         # Contare i valori nulli in ciascuna colonna
         null_counts = df.select(
             [count(when(col(c).isNull(), c)).alias(c) for c in df.columns])
@@ -23,7 +26,9 @@ class PreprocessingFlights:
         null_percentage.show()
 
     def __conc_date(self):
-        ''' Questa funzione concatena le date
+        ''' Funzione che permette di combinare YEARS, MONTH, DAY, HOUR e MINUTE
+        in una sola colonna 'date' anzichè in cinque. Così facendo c'è una maggiore
+        leggibilità del dataframe
         '''
         df = self.df_flights
         # Pad MONTH e DAY con zeri se necessario
@@ -67,11 +72,16 @@ class PreprocessingFlights:
         self.df_flights = df 
 
     def __divide_dataset(self):
+        '''Funzione che permette la divisione del dataframe dei voli,
+        in voli cancellati e voli in ritardo'''
         df = self.df_flights
         self.cancelled_flights = df.filter(df["CANCELLED"] == 1)
         self.delayed_flights = df.filter(df["CANCELLED"] == 0)
     
     def __preprocessing_original_flights(self):
+        '''Funzione che preprocessa il dataframe dei voli applicando
+        le funzioni sopra elencate'''
+
         columns_to_drop_init = ['TAXI_OUT', 'TAXI_IN', 'WHEELS_ON', 'WHEELS_OFF', 'YEAR',
                         'DAY', 'DATE', 'AIR_SYSTEM_DELAY', 'SECURITY_DELAY', 'AIRLINE_DELAY',
                         'LATE_AIRCRAFT_DELAY', 'WEATHER_DELAY', 'DIVERTED', 'FLIGHT_NUMBER',
@@ -86,6 +96,8 @@ class PreprocessingFlights:
         self.__divide_dataset()
     
     def __preprocessing_cancelled_flights(self):
+        '''Funzione che preprocessa il dataframe dei voli cancellati applicando
+        le funzioni sopra elencate'''
         self.__percentage_of_null_values(self.cancelled_flights)
         columns_to_drop_cancelled = ['DEPARTURE_TIME', 'DEPARTURE_DELAY', 'ELAPSED_TIME',
                                 'ARRIVAL_TIME', 'ARRIVAL_TIME', 'ARRIVAL_DELAY']
@@ -95,6 +107,9 @@ class PreprocessingFlights:
         self.__percentage_of_null_values(self.cancelled_flights)
 
     def __preprocessing_delayed_flights(self):
+        '''Funzione che preprocessa il dataframe dei voli in ritardo applicando
+        le funzioni sopra elencate'''
+
         self.__percentage_of_null_values(self.delayed_flights)
         columns_to_drop_delayed = ['CANCELLED', 'CANCELLATION_REASON']
 
@@ -106,13 +121,10 @@ class PreprocessingFlights:
         self.__percentage_of_null_values(self.delayed_flights)
 
     def preprocessing_data(self):
+        '''Funzione che preprocessa i vari dataframe e ritorna i
+        dataframe dei voli cancellati e dei voli in ritardo '''
         self.__preprocessing_original_flights()
         self.__preprocessing_cancelled_flights()
         self.__preprocessing_delayed_flights()
         return self.cancelled_flights, self.delayed_flights
 
-'''
-def main():
-    p = FlightsPreprocessing(df_flight)
-    p.preprocessing_data()
-'''
