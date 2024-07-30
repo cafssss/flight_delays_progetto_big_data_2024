@@ -14,12 +14,17 @@ class DelayedFlights:
         self.airline_df = airline_df
 
     def most_delay(self):
+        '''Funzione che permette la generazione di un grafico a barre dove 
+        vengono rappresentate le 20 città con la media più alta di ritardo 
+        in partenza e in arrivo'''
+
         # Unione delle tabelle sulla colonna IATACODE
         joined_df = self.delayed_flights.join(
             self.airports_df, self.delayed_flights.ORIGIN_AIRPORT == self.airports_df.IATA_CODE, "inner")
 
         flights_count = joined_df.groupBy("CITY").agg(
             count("*").alias("NUM_FLIGHTS"))
+        
         # Calcolare la media del numero di voli
         average_num_flights = flights_count.select(
             mean("NUM_FLIGHTS").alias("AVG_ROUTE"))
@@ -42,7 +47,9 @@ class DelayedFlights:
             "TOTAL_AVG_DELAY",
             (col("Average Departure Delay") + col("Average Arrival Delay")) / 2
         )
+
         average_delays = average_delays.orderBy(col("TOTAL_AVG_DELAY").desc())
+
         # Convertire il risultato in un Pandas DataFrame per la visualizzazione con Matplotlib
         pandas_df = average_delays.toPandas()
 
@@ -81,6 +88,8 @@ class DelayedFlights:
         plt.show()
 
     def graph_city_airline_delay(self):
+        '''Funzione che genera un grafico a barre che rappresenta la media
+        dei minuti di ritardo per città e compagnia aerea'''
 
         # Rinomina le colonne duplicate per evitare conflitti durante l'unione
         airports_df = self.airports_df.withColumnRenamed("AIRLINE", "AIRLINE_AIRPORTS")
@@ -93,11 +102,12 @@ class DelayedFlights:
         flights_count = joined_df.groupBy("CITY").agg(
             count("*").alias("NUM_FLIGHTS"))
 
-        # Filtrare le città con più della media di voli per rotta (in modo da filtrare le rotte più gettonate)
+        # Ordinare il DataFrame per la colonna NUM_FLIGHTS in ordine decrescente
         filtered_routes = flights_count.orderBy("NUM_FLIGHTS", ascending=False).limit(10)
 
         # Unire il DataFrame originale con le città filtrate per ottenere i dettagli di ritardo solo per le città valide
         valid_df = joined_df.join(filtered_routes, on="CITY")
+
         # Calcolare la media dei ritardi di partenza per città e compagnia aerea
         average_delays = valid_df.groupBy("CITY", "AIRLINE_NAME") \
             .agg(mean("DEPARTURE_DELAY").alias("Average Departure Delay")).orderBy("Average Departure Delay", ascending=False)\
@@ -106,6 +116,7 @@ class DelayedFlights:
         # Convertire il risultato in un Pandas DataFrame per la visualizzazione con Seaborn
         pandas_df = average_delays.toPandas()
 
+        # Generazione grafico
         plt.figure(figsize=(14, 7))
         sns.barplot(x='Average Departure Delay', y='CITY', hue='AIRLINE_NAME', data=pandas_df)
         plt.title('Media dei minuti di ritardo per città e compagnia Aerea')
@@ -115,6 +126,9 @@ class DelayedFlights:
         plt.show()
 
     def origin_airport_pie(self):
+        '''Funzione che genera un grafico a torta che rappresenta la
+        percentuale di voli per aeroporto di origine
+        '''
         # Fare la join tra flights e airports per ottenere i nomi degli aeroporti
         flights_with_airport_names = self.delayed_flights.join(
             self.airports_df,
@@ -132,11 +146,12 @@ class DelayedFlights:
         # Calcolare il totale dei voli
         total_flights = flights_count.agg(_sum("NUM_FLIGHTS").alias(
             "TOTAL_FLIGHTS")).collect()[0]["TOTAL_FLIGHTS"]
-        print(total_flights)
+        
         # Calcolare la percentuale di voli per ogni aeroporto
         flights_percentage = flights_count.withColumn(
             "PERCENTAGE", (col("NUM_FLIGHTS") / total_flights) * 100)
-
+        
+        # Ordinare il DataFrame per la colonna PERCENTAGE in ordine decrescente
         flights_percentage_first = flights_percentage.orderBy(
             "PERCENTAGE", ascending=False).limit(15)
         
@@ -151,7 +166,11 @@ class DelayedFlights:
         fig.show()
 
     def route_most_delay(self):
-
+        '''Funzione che genera un grafico a barre verticale che rappresenta
+        le top 10 rotte (aeroporto di origine - aeroporto di destinazione)
+        con il più elevato ritardo medio totale (ritardo in ingresso e in uscita)'''
+        
+        # Crea una colonna ROUTE concatenando ORIGIN_AIRPORT e DESTINATION_AIRPORT
         df_flights = self.delayed_flights.withColumn("ROUTE", concat_ws(
             "-", self.delayed_flights.ORIGIN_AIRPORT, self.delayed_flights.DESTINATION_AIRPORT))
 
@@ -198,6 +217,9 @@ class DelayedFlights:
         fig.show()
 
     def most_delay_airport_most_flight(self):
+        '''Funzione che genera uno scatter plot che rappresenta la relazione
+        fra il numero di voli e il ritardo medio di partenza per aeroporto'''
+
         # Calcolare il numero di voli per ogni aeroporto di partenza
         flights_count = self.delayed_flights.groupBy("ORIGIN_AIRPORT").agg(
             count("*").alias("NUM_FLIGHTS"))
