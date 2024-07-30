@@ -19,7 +19,10 @@ class GraphframeFlights:
         self.airports_df = airports_df
 
     def graph_cities_interconnected(self):
-
+        ''' Questa funzione crea e analizza un grafo delle città (aeroporti) più connesse
+        utilizzando GraphFrames. Vengono calcolati e visualizzati il PageRank, il numero
+        di triangoli e il grado di connessione per ciascuna città. Vengono creati tre grafici a barre
+        per visualizzare lo studio fatto sui grafi'''
         # Creare il DataFrame dei vertici
         vertices = self.airports_df.withColumnRenamed("IATA_CODE", "id")
 
@@ -86,59 +89,61 @@ class GraphframeFlights:
         plt.show()
 
     def graph_states_interconnected(self):
+        ''' Questa funzione crea e analizza un grafo degli stati più connessi
+        utilizzando GraphFrames. Vengono calcolati e visualizzati il PageRank
+        e il grado di connessione per ciascun stato. Vengono creati due grafici a barre
+        per visualizzare lo studio fatto sui grafi'''
+
+        # Unire i dati dei voli con i dati degli aeroporti per ottenere gli stati
         flights_with_states = self.delayed_flights \
             .join(self.airports_df.withColumnRenamed("IATA_CODE", "ORIGIN_AIRPORT"), "ORIGIN_AIRPORT") \
             .withColumnRenamed("STATE", "ORIGIN_STATE") \
             .join(self.airports_df.withColumnRenamed("IATA_CODE", "DESTINATION_AIRPORT"), "DESTINATION_AIRPORT") \
             .withColumnRenamed("STATE", "DESTINATION_STATE")
-        
-        flights_with_states = flights_with_states.select("ORIGIN_STATE", "DESTINATION_STATE")
+
+        flights_with_states = flights_with_states.select(
+            "ORIGIN_STATE", "DESTINATION_STATE")
 
         # Creare i vertici
         vertices = flights_with_states.select("ORIGIN_STATE").union(
             flights_with_states.select("DESTINATION_STATE")).distinct().withColumnRenamed("ORIGIN_STATE", "id")
 
         # Creare gli archi
-        edges = flights_with_states.withColumnRenamed("ORIGIN_STATE", "src").withColumnRenamed("DESTINATION_STATE", "dst")
+        edges = flights_with_states.withColumnRenamed(
+            "ORIGIN_STATE", "src").withColumnRenamed("DESTINATION_STATE", "dst")
 
         # Costruire il GraphFrame
         graph = GraphFrame(vertices, edges)
 
-        # Contare il numero di triangoli
-        triangle_counts = graph.triangleCount()
-        triangle_counts.show()
+        # Calcolare il numero di connessioni in entrata per ciascun stato
+        in_degrees = graph.inDegrees
 
-        # Trovare i vertici più connessi
-        degree_df = graph.degrees
-        degree_df.show()
+        # Ordinare per numero di connessioni in entrata e mostrare le città più connesse
+        in_degrees = in_degrees.select("id", "inDegree").orderBy(
+            "inDegree", ascending=False).limit(15)
 
-        # Ordinare per numero di connessioni in entrata e mostrare le gli stati più connessi
-        degree_df = degree_df.select("id", "degree").orderBy(
-            "degree", ascending=False).limit(15)
-        
+        in_degrees.show()
+
+        # Convertire in Pandas per la visualizzazione
+        degrees_pd = in_degrees.toPandas()
+
         # Eseguire il PageRank
         pagerank_df = graph.pageRank(resetProbability=0.15, maxIter=10)
-
-        pagerank_df.vertices.show()
-
-        # Convertire in Pandas per la visualizzazione
-        pagerank_pd = pagerank_df.vertices.select("id", "pagerank").limit(15).toPandas()
-
-        # Ordinare i risultati per PageRank
-        pagerank_pd = pagerank_pd.sort_values(by="pagerank", ascending=False)
+        pagerank_df = pagerank_df.vertices.select(
+            "id", "pagerank").orderBy("pagerank", ascending=False).limit(15)
+        pagerank_df.show()
 
         # Convertire in Pandas per la visualizzazione
-        degrees_pd = degree_df.toPandas()
+        pagerank_pd = pagerank_df.toPandas()
 
         # Creare un grafico a barre per mostrare i vertici più connessi
         plt.figure(figsize=(12, 8))
-        plt.bar(degrees_pd['id'], degrees_pd['degree'])
+        plt.bar(degrees_pd['id'], degrees_pd["inDegree"])
         plt.xlabel('Stati')
         plt.ylabel('Grado')
         plt.title('Numeri di connessione per stati')
         plt.xticks(rotation=90)
         plt.show()
-
 
         # Creare un grafico a barre per mostrare il PageRank di ogni stato
         plt.figure(figsize=(12, 8))
