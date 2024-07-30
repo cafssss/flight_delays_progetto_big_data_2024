@@ -49,9 +49,11 @@ def main():
     c.plot_cancellations_by_month()
     c.plot_cancellations_by_day_of_week()
     c.cancellations_per_airport()
-
+    
     g = GraphframeFlights(delayed_flights, airports_df)
     g.graph_cities_interconnected()
+    g.graph_states_interconnected()
+
 
 if __name__ == "__main__":
     main()
