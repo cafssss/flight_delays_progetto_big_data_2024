@@ -4,7 +4,7 @@ from pyspark.sql.functions import col, mean, count, when, lpad, concat, lit, \
 
 
 
-class FlightsPreprocessing:
+class PreprocessingFlights:
 
     def __init__(self, df: DataFrame):
         self.df_flights = df
@@ -46,6 +46,8 @@ class FlightsPreprocessing:
         # Convertire la colonna SCHEDULED_DEPARTURE in timestamp
         df = df.withColumn("SCHEDULED_DEPARTURE", to_timestamp(
             col("SCHEDULED_DEPARTURE"), "yyyy-MM-dd HH:mm:ss"))
+        
+        self.df_flights = df 
 
     def __trasform_date(self, column: str):
         '''Funzione che trasforma una colonna da un formato HHMM in un formato HH:MM
@@ -62,18 +64,12 @@ class FlightsPreprocessing:
         df = df.withColumn(column, concat(
             col("HOUR"), lit(":"), col("MINUTE"), lit(":00")))
         
-    def __drop_column(self, df: DataFrame, columns: list):
-        # Cancellare le colonne specificate
-        df = df.drop(*columns)
+        self.df_flights = df 
 
     def __divide_dataset(self):
         df = self.df_flights
         self.cancelled_flights = df.filter(df["CANCELLED"] == 1)
         self.delayed_flights = df.filter(df["CANCELLED"] == 0)
-
-    def __delete_rows_null(self, df: DataFrame, column: list[str]):
-        df = df.dropna(subset=column)
-        return df
     
     def __preprocessing_original_flights(self):
         columns_to_drop_init = ['TAXI_OUT', 'TAXI_IN', 'WHEELS_ON', 'WHEELS_OFF', 'YEAR',
@@ -84,21 +80,29 @@ class FlightsPreprocessing:
         self.__trasform_date("DEPARTURE_TIME")
         self.__trasform_date("SCHEDULED_ARRIVAL")
         self.__trasform_date("ARRIVAL_TIME")
-        self.__drop_column(self.df_flights, columns_to_drop_init)
+
+        # Elimina le colonne che non servono per l'analisi
+        self.df_flights = self.df_flights.drop(*columns_to_drop_init)
         self.__divide_dataset()
     
     def __preprocessing_cancelled_flights(self):
         self.__percentage_of_null_values(self.cancelled_flights)
         columns_to_drop_cancelled = ['DEPARTURE_TIME', 'DEPARTURE_DELAY', 'ELAPSED_TIME',
                                 'ARRIVAL_TIME', 'ARRIVAL_TIME', 'ARRIVAL_DELAY']
-        self.__drop_column(self.cancelled_flights, columns_to_drop_cancelled)
+        # Elimina le colonne che non servono per l'analisi
+        self.cancelled_flights = self.cancelled_flights.drop(*columns_to_drop_cancelled)
+
         self.__percentage_of_null_values(self.cancelled_flights)
 
     def __preprocessing_delayed_flights(self):
         self.__percentage_of_null_values(self.delayed_flights)
         columns_to_drop_delayed = ['CANCELLED', 'CANCELLATION_REASON']
-        self.__drop_column(self.delayed_flights, columns_to_drop_delayed)
-        self.__delete_rows_null(self.delayed_flights, ["ELAPSED_TIME"])
+
+        # Elimina le colonne che non servono per l'analisi
+        self.delayed_flights = self.delayed_flights.drop(*columns_to_drop_delayed)
+        # Elimina le righe null della colonna specificata in subset
+        self.delayed_flights = self.delayed_flights.dropna(subset=["ELAPSED_TIME"])
+
         self.__percentage_of_null_values(self.delayed_flights)
 
     def preprocessing_data(self):
