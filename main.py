@@ -32,6 +32,7 @@ def main():
     preprocessing = PreprocessingFlights(flights_df)
     cancelled_flights, delayed_flights = preprocessing.preprocessing_data()
 
+    # Istanzio un oggetto e richiamo dei metodi per l'analisi dei voli in ritardo
     d = DelayedFlights(delayed_flights, airports_df, airlines_df)
     d.origin_airport_pie()
     d.most_delay()
@@ -42,6 +43,7 @@ def main():
     d.route_most_delay()
     d.plot_cities_with_most_delays()
 
+    # Istanzio un oggetto e richiamo dei metodi per l'analisi dei voli cancellati
     c = CancelledFlights(cancelled_flights)
     c.plot_cancellation_reasons()
     c.plot_cancellation_reasons_pie()
@@ -49,7 +51,8 @@ def main():
     c.plot_cancellations_by_month()
     c.plot_cancellations_by_day_of_week()
     c.cancellations_per_airport()
-    
+
+    # Istanzio un oggetto e richiamo dei metodi per l'analisi dei grafi
     g = GraphframeFlights(delayed_flights, airports_df)
     g.graph_cities_interconnected()
     g.graph_states_interconnected()
